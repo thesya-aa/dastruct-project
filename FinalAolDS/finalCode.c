@@ -34,7 +34,7 @@
 #define DIM         "\033[2m"
 #define BRAND_BLUE  "\033[1;94m"
 #define BRAND_CYAN  "\033[1;96m"
-#define SUCCESS     "\033[1;92m"
+#define SUCCESS     "\033[1;96m"
 #define WARNING     "\033[1;93m"
 #define DANGER      "\033[1;91m"
 #define TEXT_WHITE  "\033[1;97m"
@@ -44,10 +44,11 @@
 #define MAX_ITEMS  50000
 #define HASH_SIZE  100
 
-// Path file database — relatif terhadap executable
+// Path file database
 #define DB_PRODUCT  "databaseProduct.txt"
 #define DB_ACCOUNT  "databaseAccount.txt"
 #define DB_CART     "databaseCart.txt"
+#define DB_ORDER    "databaseOrder.txt"
 
 // STRUCT DEFINITIONS
 
@@ -123,6 +124,10 @@ void saveProductDB();
 void saveAccountDB();
 void loadCartDB(char *username);
 void saveCartDB(char *username);
+void loadOrderDB();
+void saveOrderDB();
+void viewPendingOrders();
+void dequeueProcessOrder();
 
 // Algoritma Hashing FNV-1a 32-bit
 uint32_t fnv1a_32(const char *str) {
@@ -166,7 +171,7 @@ void loadProductDB() {
         int  id, price, stock;
         char name[100], category[50];
 
-        // Parse format: id|name|category|price|stock
+        // Format: id|name|category|price|stock
         int parsed = sscanf(line, "%d|%99[^|]|%49[^|]|%d|%d",
                             &id, name, category, &price, &stock);
 
@@ -336,7 +341,44 @@ void saveCartDB(char *username) {
     rename("temp_cart.txt", DB_CART);
 }
 
-// AUTH MODULE
+void loadOrderDB() {
+    FILE *fp = fopen(DB_ORDER, "r");
+    if (!fp) return;
+
+    char line[200];
+    int loaded = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strlen(line) == 0) continue;
+
+        char custName[50];
+        int total;
+        int parsed = sscanf(line, "%49[^|]|%d", custName, &total);
+
+        if (parsed == 2) {
+            enqueueOrder(custName, total);
+            loaded++;
+        }
+    }
+    fclose(fp);
+    if (loaded > 0) {
+        printf(SUCCESS "[DB] %d antrean pesanan berhasil dimuat dari %s\n" RESET, loaded, DB_ORDER);
+    }
+}
+
+void saveOrderDB() {
+    FILE *fp = fopen(DB_ORDER, "w");
+    if (!fp) return;
+
+    OrderNode *cur = frontQueue;
+    while (cur) {
+        fprintf(fp, "%s|%d\n", cur->customerName, cur->totalBill);
+        cur = cur->next;
+    }
+    fclose(fp);
+}
+
+// Auth Module
 // Struktur: Hash Table (Division Method) + Chaining
 
 void initHashTable() {
@@ -427,7 +469,7 @@ int loginAccount() {
     return -1;
 }
 
-// ADMIN MODULE
+// Admin Module
 // Struktur: Binary Search Tree (BST) untuk indexing katalog
 
 struct BSTNode *createBSTNode(int id, int index) {
@@ -538,7 +580,7 @@ void createItem() {
     printf(SUCCESS "Item Successfully Added!\n" RESET);
 }
 
-// SORTING ALGORITHMS
+// Sorting Algorithms
 
 static void swapItem(struct Item *a, struct Item *b) {
     struct Item temp = *a;
@@ -695,7 +737,6 @@ void readCatalog() {
             break;
     }
 
-    //Sort using qsort for display
     qsort(arrDisplay, validCount, sizeof(struct Item), selectedCmp);
 
     // Print Catalog
@@ -709,20 +750,20 @@ void readCatalog() {
     }
     printf("--------------------------------------------------------------------------------------\n");
 
-    // Measure Bubble Sort
+    // waktu Bubble Sort
     clock_t start, end;
     start = clock();
     bubbleSortCustom(arrBubble, validCount, selectedCmp);
     end = clock();
     double timeBubble = (double)(end - start) / CLOCKS_PER_SEC * 1000.0;
 
-    // Measure Merge Sort
+    // waktu Merge Sort
     start = clock();
     mergeSortCustom(arrMerge, 0, validCount - 1, selectedCmp);
     end = clock();
     double timeMerge = (double)(end - start) / CLOCKS_PER_SEC * 1000.0;
 
-    // Measure Quick Sort
+    // waktu Quick Sort
     start = clock();
     quickSortCustom(arrQuick, 0, validCount - 1, selectedCmp);
     end = clock();
@@ -805,7 +846,9 @@ void adminMenu() {
         printf("2. View Catalog\n");
         printf("3. Update Item\n");
         printf("4. Delete Item\n");
-        printf("5. Exit\n");
+        printf("5. View Pending Orders\n");
+        printf("6. Process Next Order (Dequeue)\n");
+        printf("7. Exit\n");
         printf("Choose : ");
         scanf("%d", &choice);
 
@@ -814,16 +857,16 @@ void adminMenu() {
             case 2: readCatalog();             break;
             case 3: updateItem();              break;
             case 4: deleteItem();              break;
-            
-            
-            case 5: printf(SUCCESS "Exiting Admin Module...\n" RESET); break;
+            case 5: viewPendingOrders();       break;
+            case 6: dequeueProcessOrder();     break;
+            case 7: printf(SUCCESS "Exiting Admin Module...\n" RESET); break;
             default: printf(DANGER "Invalid Menu!\n" RESET);
         }
-        if (choice != 5) pauseScreen();
-    } while (choice != 5);
+        if (choice != 7) pauseScreen();
+    } while (choice != 7);
 }
 
-// TRANSACTION MODULE
+// Transaction Module
 // Struktur: Linked List (Cart), Stack (Undo), Queue (Order)
 
 void addToCart(int id, int qty) {
@@ -942,6 +985,48 @@ void enqueueOrder(char *name, int total) {
     }
 }
 
+void viewPendingOrders() {
+    if (!frontQueue) {
+        printf(WARNING "Antrean pesanan kosong!\n" RESET);
+        return;
+    }
+    
+    printf(BRAND_BLUE "\n===== ANTREAN KASIR (QUEUE) =====\n" RESET);
+    printf("%-5s | %-25s | %-15s\n", "NO", "NAMA PELANGGAN", "TOTAL TAGIHAN");
+    printf("--------------------------------------------------\n");
+    
+    OrderNode *cur = frontQueue;
+    int count = 1;
+    while (cur) {
+        printf("%-5d | %-25.25s | Rp%-13d\n", count, cur->customerName, cur->totalBill);
+        cur = cur->next;
+        count++;
+    }
+    printf("--------------------------------------------------\n");
+    printf(SUCCESS "Total Antrean: %d Pesanan\n" RESET, count - 1);
+}
+
+void dequeueProcessOrder() {
+    if (!frontQueue) {
+        printf(DANGER "Tidak ada pesanan yang mengantre!\n" RESET);
+        return;
+    }
+    
+    OrderNode *temp = frontQueue;
+    
+    printf(SUCCESS "\n[KASIR] Memproses pesanan untuk: %s\n" RESET, temp->customerName);
+    printf(SUCCESS "[KASIR] Total tagihan sebesar: Rp%d telah DILUNASI.\n" RESET, temp->totalBill);
+    
+    frontQueue = frontQueue->next;
+    if (!frontQueue) {
+        rearQueue = NULL;
+    }
+    
+    free(temp);
+    saveOrderDB();
+    printf(BRAND_CYAN "Pesanan berhasil diproses (Dequeue)!\n" RESET);
+}
+
 void checkout(char *name) {
     if (!headCart) {
         printf(DANGER "Keranjang kosong!\n" RESET);
@@ -994,6 +1079,7 @@ void checkout(char *name) {
     }
 
     enqueueOrder(name, total);
+    saveOrderDB();
 
     CartNode *cartTemp;
     while (headCart) {
@@ -1081,9 +1167,6 @@ void customerMenu() {
         if (choice != 7) pauseScreen();
     } while (choice != 7);
 }
-
-// ANIMATION MODULE
-// Diadaptasi dari anmsLogin.cpp ke C
 
 const char *logo[] = {
     "    ____              __  ___          __  ",
@@ -1212,22 +1295,18 @@ void playIntroAnimation() {
     getchar();
 }
 
-// MAIN
-
 int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
     srand((unsigned int)time(NULL));
 
-    // Inisialisasi Hash Table
     initHashTable();
 
-    // Muat data dari file database
     loadAccountDB();
     loadProductDB();
+    loadOrderDB();
 
-    // Tampilkan animasi intro
     playIntroAnimation();
     CLEAR();
 
@@ -1271,8 +1350,3 @@ int main() {
     printf(BRAND_CYAN "\nTerima kasih telah berbelanja di DuoMart!\n" RESET);
     return 0;
 }
-
-
-
-
-
