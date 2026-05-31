@@ -1,0 +1,30 @@
+#ifndef SUPERMARKET_H
+#define SUPERMARKET_H
+ 
+typedef struct {
+    int  id;
+    char name[100];
+    int  price;
+    int  stock;
+} Item;
+ 
+typedef struct CartNode {
+    int             id;
+    char            name[100];
+    int             price;
+    int             qty;
+    struct CartNode *next;
+} CartNode;
+ 
+typedef struct UndoNode {
+    int              itemID;
+    struct UndoNode *next;
+} UndoNode;
+ 
+typedef struct OrderNode {
+    char              customerName[50];
+    int               totalBill;
+    struct OrderNode *next;
+} OrderNode;
+ 
+#endif 
