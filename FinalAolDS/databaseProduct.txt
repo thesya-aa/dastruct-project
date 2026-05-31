@@ -1,3 +1,4 @@
+1|Ultra Milk Vanilla Kaleng|Minyak Goreng|2000|293
 2|Ultra Milk Pedas Kotak|Biskuit & Wafer|28500|218
 3|Lifebuoy Spesial Kotak|Cokelat|134500|69
 4|Bimoli Coklat Botol 330ml|Air Mineral|110500|162
@@ -19,7 +20,7 @@
 20|SilverQueen Matcha Botol 330ml|Cokelat|107500|49
 21|Ultra Milk Goreng Bar 50g|Mie Instan|72000|398
 22|Aqua Ekstra Botol 1.5L|Cokelat|47500|365
-23|Pepsodent Barbeque Galon|Makanan Ringan|130500|143
+23|Pepsodent Barbeque Galon|Makanan Ringan|130500|141
 24|Bear Brand Rasa Bawang Kaleng|Susu & Olahan Susu|112500|245
 25|Indomie Jumbo Pouch|Obat & Suplemen|144500|224
 26|Bimoli Pearly White Sachet|Susu & Olahan Susu|122000|95
