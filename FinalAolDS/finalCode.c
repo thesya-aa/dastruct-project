@@ -837,6 +837,65 @@ void deleteItem() {
     printf(WARNING "Item Successfully Deleted!\n" RESET);
 }
 
+void generateDummyData() {
+    const char *brands[] = {"Indomie", "Sedaap", "Aqua", "Le Minerale", "Oreo", "Chitato", "Pocari", "Nescafe", "Kapal Api", "Lifebuoy", "Dettol", "Pepsodent", "Sunlight", "Rinso", "Bango", "ABC", "Bimoli", "Sania", "Taro", "Roma", "Ultra Milk", "Bear Brand", "Qtela", "SilverQueen", "Tolakangin"};
+    const char *types[] = {"Goreng", "Kuah", "Rasa Bawang", "Spesial", "Pedas", "Manis", "Original", "Ekstra", "Jumbo", "Mini", "Premium", "Klasik", "Coklat", "Vanilla", "Strawberry", "Matcha", "Barbeque", "Keju", "Lemon", "Pearly White"};
+    const char *packaging[] = {"Botol 600ml", "Sachet", "Kotak", "Kaleng", "Pouch", "Bungkus 100g", "Pack 250g", "Galon", "Cup", "Botol 1.5L", "Botol 330ml", "Bar 50g", "Isi 10", "Isi 5", "Isi 2"};
+    const char *categories[] = {
+        "Mie Instan", "Air Mineral", "Minuman Kopi", "Minuman Teh", 
+        "Makanan Ringan", "Biskuit & Wafer", "Sabun Mandi", "Deterjen", 
+        "Kecap & Saus", "Minyak Goreng", "Susu & Olahan Susu", "Obat & Suplemen", "Cokelat", "Perawatan Tubuh"
+    };
+
+    int total_data;
+    printf("Masukkan jumlah data dummy yang ingin dibuat: ");
+    if (scanf("%d", &total_data) != 1) {
+        int c; while ((c = getchar()) != '\n' && c != EOF);
+        printf(DANGER "Input tidak valid!\n" RESET);
+        return;
+    }
+
+    if (totalItems + total_data > MAX_ITEMS) {
+        printf(DANGER "Penyimpanan penuh! Hanya bisa menambah %d data lagi.\n" RESET, MAX_ITEMS - totalItems);
+        return;
+    }
+
+    printf(WARNING "Sedang membuat %d data dummy...\n" RESET, total_data);
+
+    // Cari ID terbesar yang ada saat ini untuk melanjutkan
+    int start_id = 1;
+    for (int i = 0; i < totalItems; i++) {
+        if (catalog[i].id >= start_id) {
+            start_id = catalog[i].id + 1;
+        }
+    }
+
+    for (int i = 0; i < total_data; i++) {
+        const char *brand = brands[rand() % (sizeof(brands) / sizeof(brands[0]))];
+        const char *type = types[rand() % (sizeof(types) / sizeof(types[0]))];
+        const char *pack = packaging[rand() % (sizeof(packaging) / sizeof(packaging[0]))];
+        const char *category = categories[rand() % (sizeof(categories) / sizeof(categories[0]))];
+        
+        int price = ((rand() % 300) + 2) * 500; 
+        int stock = (rand() % 500) + 1;
+
+        int new_id = start_id + i;
+
+        catalog[totalItems].id = new_id;
+        snprintf(catalog[totalItems].name, 99, "%s %s %s", brand, type, pack);
+        strncpy(catalog[totalItems].category, category, 49);
+        catalog[totalItems].price = price;
+        catalog[totalItems].stock = stock;
+
+        rootIndex = insertBST(rootIndex, new_id, totalItems);
+        totalItems++;
+    }
+
+    saveProductDB();
+    saveCartDB(loggedInUser);
+    printf(SUCCESS "SUKSES! %d data dummy berhasil ditambahkan ke katalog utama.\n" RESET, total_data);
+}
+
 void adminMenu() {
     int choice;
     do {
@@ -848,7 +907,8 @@ void adminMenu() {
         printf("4. Delete Item\n");
         printf("5. View Pending Orders\n");
         printf("6. Process Next Order (Dequeue)\n");
-        printf("7. Exit\n");
+        printf("7. Generate Dummy Data\n");
+        printf("8. Exit\n");
         printf("Choose : ");
         scanf("%d", &choice);
 
@@ -859,11 +919,12 @@ void adminMenu() {
             case 4: deleteItem();              break;
             case 5: viewPendingOrders();       break;
             case 6: dequeueProcessOrder();     break;
-            case 7: printf(SUCCESS "Exiting Admin Module...\n" RESET); break;
+            case 7: generateDummyData();       break;
+            case 8: printf(SUCCESS "Exiting Admin Module...\n" RESET); break;
             default: printf(DANGER "Invalid Menu!\n" RESET);
         }
-        if (choice != 7) pauseScreen();
-    } while (choice != 7);
+        if (choice != 8) pauseScreen();
+    } while (choice != 8);
 }
 
 // Transaction Module
